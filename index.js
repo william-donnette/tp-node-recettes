@@ -103,7 +103,6 @@ passport.use(new jwtStrategy(opts, async function (jwtPayload, done) {
 app.get('/recettes', async function (req, res) {
     try {
         const response = await axios.get(dbUrl + "recettes", options);
-        console.log(response);
         const recettes = response.data;
         recettes.forEach(recette => {
             delete recette.user[0].password;
