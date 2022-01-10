@@ -2,12 +2,14 @@
  * Package Needed
  */
 const express = require('express');
+const cors = require('cors');
 const app = express();
 const axios = require('axios');
 const passport = require('passport');
 const jwtStrategy = require('passport-jwt').Strategy, extractJwt = require('passport-jwt').ExtractJwt;
 const jsonwt = require('jsonwebtoken');
 const { response } = require('express');
+const { use } = require('passport');
 const PORT = process.env.PORT || 5000 // this is very important
 
 /**
@@ -29,6 +31,7 @@ const options = {
  */
 app.use(express.json());
 app.use(passport.initialize());
+app.use(cors());
 
 const verifyRecipeUser = async function (req, res, next) {
     const user = req.user;
