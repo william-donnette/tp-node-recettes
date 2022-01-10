@@ -1,0 +1,27 @@
+{
+  "name": "tp-node-recettes",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/william-donnette/tp-node-recettes.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/william-donnette/tp-node-recettes/issues"
+  },
+  "homepage": "https://github.com/william-donnette/tp-node-recettes#readme",
+  "dependencies": {
+    "axios": "^0.24.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "passport": "^0.5.1",
+    "passport-jwt": "^4.0.0"
+  }
+}
