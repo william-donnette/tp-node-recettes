@@ -1,87 +1,28 @@
-/**
- * Package Needed
- */
 const express = require('express');
 const cors = require('cors');
 const app = express();
-const axios = require('axios');
 const passport = require('passport');
 const jwtStrategy = require('passport-jwt').Strategy, extractJwt = require('passport-jwt').ExtractJwt;
-const jsonwt = require('jsonwebtoken');
 const { response } = require('express');
 const { use } = require('passport');
-const PORT = process.env.PORT || 5000 // this is very important
+const userModule = require('./user');
+const axios = require('axios');
+const recetteModule = require('./recette');
+const PORT = process.env.PORT || 5000
+const variables = require('./variables');
 
-/**
- * Global Constances
- */
-const dbUrl = "https://tpnoderecettes-11ec.restdb.io/rest/";
-const apiKey = "f2bf8e06bc4007fc8f21e72fbd79afa928001";
-const secretToken = "my_awesome_token";
-const options = {
-    headers: {
-        'cache-control': 'no-cache',
-        'x-apikey': apiKey,
-        'content-type': 'application/json'
-    }
-}
-
-/**
- * Middlewares
- */
+// MIDDLEWARES
 app.use(express.json());
 app.use(passport.initialize());
 app.use(cors());
-
-const verifyRecipeUser = async function (req, res, next) {
-    const user = req.user;
-
-    try {
-        const response = await axios.get(dbUrl + "recettes/" + req.params.id, options);
-        const recette = response.data;
-        if (recette.length == 0) {
-            res.json({ "message": "Recipe not found" })
-        } else {
-            if (recette.user[0]._id == user._id)
-                next();
-            else
-                res.json({ "message": "Unauthorized" })
-        }
-
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-}
-
-const getRecette = function (resp) {
-    try {
-        const recette = resp.data;
-        delete recette.user[0].password;
-        delete recette._createdby;
-        delete recette._changedby;
-        delete recette._created;
-        delete recette._changed;
-        delete recette._keywords;
-        delete recette._tags;
-        delete recette._version;
-        return recette;
-    } catch (error) {
-        console.log(error);
-    }
-    return null;
-}
-/**
- * Passport Authentification
- */
+// Passport Auth
 let opts = {
     jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: secretToken
+    secretOrKey: variables.secretToken
 }
 passport.use(new jwtStrategy(opts, async function (jwtPayload, done) {
     try {
-        const response = await axios.get(dbUrl + 'users/' + jwtPayload.id, options);
+        const response = await axios.get(variables.dbUrl + 'users/' + jwtPayload.id, variables.options);
         const user = response.data;
         if (!user)
             return done({ "message": "User not found !" }, false);
@@ -92,204 +33,503 @@ passport.use(new jwtStrategy(opts, async function (jwtPayload, done) {
 }))
 
 /**
- * Routes
- */
-
-/**
- * Routes Recipes
- */
-
-/**
- * Route getAll
- * Return a list of recipes
- */
-app.get('/recettes', async function (req, res) {
-    try {
-        const response = await axios.get(dbUrl + "recettes", options);
-        const recettes = response.data;
-        recettes.forEach(recette => {
-            delete recette.user[0].password;
-        })
-        res.json({ 'total': recettes.length, 'recipes': recettes })
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
-
-/**
- * Route get
- * Return a simple recipe
- */
-app.get('/recette/:id', async function (req, res) {
-    try {
-        const response = await axios.get(dbUrl + "recettes/" + req.params.id, options);
-        const recette = getRecette(response);
-        if (!recette)
-            res.json({ "message": "Recipe not found" });
-
-        res.json(recette);
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
-
-/**
- * Route create
- * Create a new recipe
- * Return the recipe
- * Need Authentification
- */
-app.post('/recette', passport.authenticate('jwt', { session: false }), async function (req, res) {
-    try {
-        const user = req.user;
-        const date = new Date();
-        const params = {
-            title: req.body.title,
-            description: req.body.description,
-            ingredients: req.body.ingredients,
-            minutes: req.body.minutes,
-            user: user,
-            created_at: date,
-            updated_at: date,
+ * @api {get} /recettes Recipe List
+ * @apiName ListRecipes
+ * @apiGroup Recipe
+ *
+ * @apiSuccess {Array} recipes Recipe list
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "total": 2,
+            "recipes": [
+                {
+                    "_id": "61dbebe5d4fd1466000a0090",
+                    "title": "Title 3",
+                    "description": "Desc",
+                    "created_at": "2022-01-10T08:18:43.183Z",
+                    "updated_at": "2022-01-10T08:18:43.183Z",
+                    "minutes": 30,
+                    "user": [
+                        {
+                            "_id": "61dbe61bd4fd1466000a0001",
+                            "email": "william@gmail.com",
+                            "active": true,
+                            "_created": "2022-01-10T07:54:03.538Z",
+                            "_changed": "2022-01-10T07:54:03.538Z"
+                        }
+                    ],
+                    "ingredients": [
+                        {
+                            "name": "Tomates",
+                            "quantity": 15
+                        }
+                    ]
+                },
+                {
+                    "_id": "61bb19d9d4fd146600067221",
+                    "title": "La recette du turfu",
+                    "description": "description",
+                    "created_at": "2021-12-16T10:49:59.000Z",
+                    "updated_at": "2021-12-16T10:49:59.000Z",
+                    "ingredients": [],
+                    "minutes": 2,
+                    "user": [
+                        {
+                            "_id": "61bb13bbd4fd146600067199",
+                            "email": "test@test.com",
+                            "active": true,
+                            "_created": "2021-12-16T10:23:55.132Z",
+                            "_changed": "2021-12-16T10:23:55.132Z"
+                        }
+                    ]
+                }
+            ]
         }
-        const response = await axios.post(dbUrl + 'recettes', params, options);
-        const recette = getRecette(response);
-        if (recette)
-            res.json({ "message": "Recipes saved !", "recette": recette });
-        else
-            res.json({ "message": "Une erreur est survenue" })
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+ *      
+ *
+ */
+app.get('/recettes',
+    recetteModule.getAll
+);
 
 /**
- * Route update
- * Update an already created recipe
- * Return the recipe actualised
- * Need Authentification
- * Need to be the creator
- */
-app.patch('/recette/:id', passport.authenticate('jwt', { session: false }), verifyRecipeUser, async function (req, res) {
-    try {
-        let params = {};
-        for (const [key, val] of Object.entries(req.body)) {
-            if (["title", "description", "ingredients", "minutes"].find(value => key == value))
-                params[key] = val
+ * @api {get} /recette/:id Recipe Details
+ * @apiName DetailsRecipe
+ * @apiGroup Recipe
+ *
+ * @apiParam {String} id Recipe Unique ID.
+ *
+ * @apiSuccess {Object} recipe Recipe details
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "_id": "61dc2b78d4fd1466000a084e",
+            "title": "La vraie recette 5",
+            "description": "La vraie description",
+            "created_at": "2022-01-10T12:49:58.073Z",
+            "updated_at": "2022-01-10T12:49:58.073Z",
+            "minutes": 42,
+            "user": [
+                {
+                    "_id": "61dc0ac7d4fd1466000a0537",
+                    "email": "loa@gmail.com",
+                    "active": true,
+                    "_created": "2022-01-10T10:30:31.136Z",
+                    "_changed": "2022-01-10T10:30:31.136Z"
+                }
+            ],
+            "ingredients": [
+                {
+                    "name": "Tomates",
+                    "quantity": 20
+                },
+                {
+                    "name": "Oignons",
+                    "quantity": 5
+                }
+            ]
         }
-        params.updated_at = new Date();
-        const response = await axios.patch(dbUrl + "recettes/" + req.params.id, params, options)
-        const recette = getRecette(response);
-
-        if (recette)
-            res.json({ "message": "Recipes updated !", "recette": recette });
-        else
-            res.json({ "message": "Une erreur est survenue" })
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+ *
+ * @apiError NotFound Recipe with the given ID has not been found.
+ *
+ * @apiErrorExample NotFound:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Recipe not found"
+        }     
+ *
+ */
+app.get('/recette/:id',
+    recetteModule.get
+);
 
 /**
- * Route update
- * Update an already created recipe entirely
- * Return the recipe actualised
- * Need Authentification
- * Need to be the creator
- */
-app.put('/recette/:id', passport.authenticate('jwt', { session: false }), verifyRecipeUser, async function (req, res) {
-    try {
-        const date = new Date();
-        const params = {
-            title: req.body.title,
-            description: req.body.description,
-            ingredients: req.body.ingredients,
-            minutes: req.body.minutes,
-            updated_at: date,
+ * @api {post} /recette Create Recipe
+ * @apiName CreateRecipe
+ * @apiGroup Recipe
+ *
+ * @apiParam {String} title Recipe Title.
+ * @apiParam {String} description Recipe description.
+ * @apiParam {Array}  ingredients Array of Object for recipe products.
+ * @apiParam {Number} minutes Recipe time.
+ *
+ * @apiSuccess {Object} recipe CreatedRecipe
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "message": "Recipes saved !",
+            "recette": {
+                "_id": "61dc2b78d4fd1466000a084e",
+                "title": "La vraie recette 5",
+                "description": "La vraie description",
+                "created_at": "2022-01-10T12:49:58.073Z",
+                "updated_at": "2022-01-10T12:49:58.073Z",
+                "minutes": 42,
+                "user": [
+                    {
+                        "_id": "61dc0ac7d4fd1466000a0537",
+                        "email": "loa@gmail.com",
+                        "active": true,
+                        "_created": "2022-01-10T10:30:31.136Z",
+                        "_changed": "2022-01-10T10:30:31.136Z"
+                    }
+                ],
+                "ingredients": [
+                    {
+                        "name": "Tomates",
+                        "quantity": 20
+                    },
+                    {
+                        "name": "Oignons",
+                        "quantity": 5
+                    }
+                ]
+            }
         }
-        const response = await axios.put(dbUrl + "recettes/" + req.params.id, params, options)
-        const recette = getRecette(response);
-
-        if (recette)
-            res.json({ "message": "Recipes updated !", "recette": recette });
-        else
-            res.json({ "message": "Une erreur est survenue" })
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+ *    
+ * @apiError Unauthorized User not connected.
+ *
+ * @apiErrorExample Unauthorized:
+ *     HTTP/1.1 401 Unauthorized
+ *     {
+            "message": "Unauthorized"
+        }
+ *
+ * @apiError ValidationError Missing required field.
+ *
+ * @apiErrorExample ValidationError:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Unable to save record (validation)",
+            "name": "ValidationError",
+            "list": [
+                {
+                    "field": "description",
+                    "message": [
+                        "Missing required field",
+                        "REQUIRED"
+                    ]
+                }
+            ],
+            "status": 400
+        }
+ *
+ */
+app.post('/recette',
+    passport.authenticate('jwt', { session: false }),
+    recetteModule.create
+);
 
 /**
- * Route delete
- * Delete a recipe
- * Return the id of the deleted recipe
- * Need Authentification
- * Need to be the creator
+ * @api {patch} /recette/:id Update Recipe
+ * @apiName UpdateRecipe
+ * @apiGroup Recipe
+ *
+ * @apiParam {String} id Recipe Unique ID.
+ * @apiParam {String} title Recipe Title NOT REQUIRED.
+ * @apiParam {String} description Recipe description NOT REQUIRED.
+ * @apiParam {Array}  ingredients Array of Object for recipe products NOT REQUIRED.
+ * @apiParam {Number} minutes Recipe time NOT REQUIRED.
+ *
+ * @apiSuccess {Object} recipe UpdatedRecipe
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "message": "Recipes updated !",
+            "recette": {
+                "_id": "61dc2828d4fd1466000a07e8",
+                "title": "La vraie recette 3",
+                "description": "Desc 2",
+                "created_at": "2022-01-10T12:35:49.753Z",
+                "updated_at": "2022-01-10T12:36:03.131Z",
+                "minutes": 2,
+                "user": [
+                    {
+                        "_id": "61dc0ac7d4fd1466000a0537",
+                        "email": "loa@gmail.com",
+                        "active": true,
+                        "_created": "2022-01-10T10:30:31.136Z",
+                        "_changed": "2022-01-10T10:30:31.136Z"
+                    }
+                ],
+                "ingredients": [
+                    {
+                        "name": "Tomates",
+                        "quantity": 15
+                    }
+                ]
+            }
+        }
+ *
+ * @apiError NotFound Recipe with the given ID has not been found.
+ *
+ * @apiErrorExample NotFound:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Recipe not found"
+        }
+        
+ *
+ * @apiError Unauthorized User not connected.
+ *
+ * @apiErrorExample Unauthorized:
+ *     HTTP/1.1 401 Unauthorized
+ *     {
+            "message": "Unauthorized"
+        }
+ *
+ * @apiError Forbidden Connected User doesn't have the rights to modify the given recipe.
+ *
+ * @apiErrorExample Forbidden:
+ *     HTTP/1.1 403 Forbidden
+ *     {
+            "message": "Unauthorized"
+        }
+ *
  */
-app.delete('/recette/:id', passport.authenticate('jwt', { session: false }), verifyRecipeUser, async function (req, res) {
-    try {
-        await axios.delete(dbUrl + "recettes/" + req.params.id, options)
-        res.json({ "message": "Recipe deleted" });
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+app.patch('/recette/:id',
+    passport.authenticate('jwt', { session: false }),
+    recetteModule.verify,
+    recetteModule.patch
+);
 
 /**
- * Route sign in
- * Need to be not Authenticate
+ * @api {put} /recette/:id Update Entire Recipe
+ * @apiName UpdateEntireRecipe
+ * @apiGroup Recipe
+ *
+ * @apiParam {String} id Recipe Unique ID.
+ * @apiParam {String} title Recipe Title.
+ * @apiParam {String} description Recipe description.
+ * @apiParam {Array} ingredients Array of Object for recipe products.
+ * @apiParam {Number} minutes Recipe time.
+ *
+ * @apiSuccess {Object} recipe UpdatedRecipe
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "message": "Recipes updated !",
+            "recette": {
+                "_id": "61dc2828d4fd1466000a07e8",
+                "title": "La vraie recette 3",
+                "description": "Desc 2",
+                "created_at": "2022-01-10T12:35:49.753Z",
+                "updated_at": "2022-01-10T12:36:03.131Z",
+                "minutes": 2,
+                "user": [
+                    {
+                        "_id": "61dc0ac7d4fd1466000a0537",
+                        "email": "loa@gmail.com",
+                        "active": true,
+                        "_created": "2022-01-10T10:30:31.136Z",
+                        "_changed": "2022-01-10T10:30:31.136Z"
+                    }
+                ],
+                "ingredients": [
+                    {
+                        "name": "Tomates",
+                        "quantity": 15
+                    }
+                ]
+            }
+        }
+ *
+ * @apiError NotFound Recipe with the given ID has not been found.
+ *
+ * @apiErrorExample NotFound:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Recipe not found"
+        }
+        
+ *
+ * @apiError Unauthorized User not connected.
+ *
+ * @apiErrorExample Unauthorized:
+ *     HTTP/1.1 401 Unauthorized
+ *     {
+            "message": "Unauthorized"
+        }
+ *
+ * @apiError ValidationError Missing required field.
+ *
+ * @apiErrorExample ValidationError:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Unable to save record (validation)",
+            "name": "ValidationError",
+            "list": [
+                {
+                    "field": "title",
+                    "message": [
+                        "Missing required field",
+                        "REQUIRED"
+                    ]
+                }
+            ],
+            "status": 400
+        }
+ *
+ * @apiError Forbidden Connected User doesn't have the rights to modify the given recipe.
+ *
+ * @apiErrorExample Forbidden:
+ *     HTTP/1.1 403 Forbidden
+ *     {
+            "message": "Unauthorized"
+        }
+ *
  */
-app.post('/login', async function (req, res) {
-    const email = req.body.email;
-    const password = req.body.password;
-    try {
-        const response = await axios.get(dbUrl + `users?q={"email" : "${email}", "password" : "${password}"}`, options)
-        const user = response.data[0];
-        if (!user)
-            res.json({ 'message': 'User not found' });
-
-        const jwt = jsonwt.sign({ id: user._id, email: user.email }, secretToken);
-        res.json({ jwt });
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+app.put('/recette/:id',
+    passport.authenticate('jwt', { session: false }),
+    recetteModule.verify,
+    recetteModule.put
+);
 
 /**
- * Route sign up
- * Create a new user
- * Need to be not Authenticate
+ * @api {delete} /recette/:id Delete Recipe
+ * @apiName DeleteRecipe
+ * @apiGroup Recipe
+ *
+ * @apiParam {String} id Recipe Unique ID.
+ *
+ * @apiSuccess {String} message MessageSucceed
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "message": "Recipe deleted"
+        }
+ *
+ * @apiError NotFound Recipe with the given ID has not been found.
+ *
+ * @apiErrorExample NotFound:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Recipe not found"
+        }
+        
+ *
+ * @apiError Unauthorized User not connected.
+ *
+ * @apiErrorExample Unauthorized:
+ *     HTTP/1.1 401 Unauthorized
+ *     {
+            "message": "Unauthorized"
+        }
+ *
+ * @apiError Forbidden Connected User doesn't have the rights to modify the given recipe.
+ *
+ * @apiErrorExample Forbidden:
+ *     HTTP/1.1 403 Forbidden
+ *     {
+            "message": "Unauthorized"
+        }
+ *
  */
-app.post('/register', async function (req, res) {
-    const email = req.body.email;
-    const password = req.body.password;
-    try {
-        await axios.post(dbUrl + 'users', {
-            'email': email,
-            'password': password,
-            'active': true
-        }, options);
-        res.json({ "message": "User saved !" });
-    } catch (error) {
-        if (error.response)
-            res.json(error.response.data);
-        console.log(error);
-    }
-});
+app.delete('/recette/:id',
+    passport.authenticate('jwt', { session: false }),
+    recetteModule.verify,
+    recetteModule.remove
+);
+
+/**
+ * @api {post} /login Connect User
+ * @apiName ConnectUser
+ * @apiGroup User
+ *
+ * @apiParam {String} email Users Email.
+ * @apiParam {String} password Users secret Password.
+ *
+ * @apiSuccess {String} jwt Token JWT Passport
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+            "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYxZGMwYWM3ZDRmZDE0NjYwMDBhMDUzNyIsImVtYWlsIjoibG9hQGdtYWlsLmNvbSIsImlhdCI6MTY0MTgxMzk1NX0.fg938WXzYr7s64G___95itdE-ujMsv2p_ImHK-9S4eU"
+        }
+ *
+ * @apiError NotFound User with this email has not been found.
+ *
+ * @apiErrorExample NotFound:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "User not found"
+        }
+ * 
+ * @apiError FailedLogin Bad Password.
+ *
+ * @apiErrorExample FailedLogin:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "User not found"
+        }
+ */
+app.post('/login',
+    userModule.login
+);
+
+/**
+ * @api {post} /register Create User
+ * @apiName CreateUser
+ * @apiGroup User
+ *
+ * @apiParam {String} email Users unique Email.
+ * @apiParam {String} password Users secret Password.
+ *
+ * @apiSuccess {String} message MessageSucceed
+ *
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     { 
+ *       "message": "User saved !" 
+ *     }
+ *
+ * @apiError ValidationError Missing Required Field.
+ *
+ * @apiErrorExample ValidationError:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Unable to save record (validation)",
+            "name": "ValidationError",
+            "list": [
+                {
+                    "field": "email",
+                    "message": [
+                        "Missing required field",
+                        "REQUIRED"
+                    ]
+                }
+            ],
+            "status": 400
+        }
+ * @apiError ValidationError Email Already Exist.
+ *
+ * @apiErrorExample ValidationError:
+ *     HTTP/1.1 400 Bad Request
+ *     {
+            "message": "Unable to save record (validation)",
+            "name": "ValidationError",
+            "list": [
+                {
+                    "field": "email",
+                    "message": [
+                        "Already exists",
+                        "UNIQUE"
+                    ]
+                }
+            ],
+            "status": 400
+        }
+ */
+app.post('/register',
+    userModule.create
+);
 
 app.listen(PORT, function () {
     console.log("Server oppened on " + PORT);
