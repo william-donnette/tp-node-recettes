@@ -111,6 +111,16 @@ const get = async function (req, res) {
 const create = async function (req, res) {
   try {
     const date = new Date()
+    if (
+      req.body.title === '' ||
+      req.body.description === '' ||
+      req.body.ingredients.length === 0 ||
+      req.body.personnes == 0 ||
+      req.body.minutes == 0
+    ) {
+      res.status(400)
+      return res.json({ message: 'An error occured' })
+    }
     const params = {
       title: req.body.title,
       description: req.body.description,
@@ -177,6 +187,16 @@ const patch = async function (req, res) {
 const put = async function (req, res) {
   try {
     const date = new Date()
+    if (
+      req.body.title === '' ||
+      req.body.description === '' ||
+      req.body.ingredients.length === 0 ||
+      req.body.personnes == 0 ||
+      req.body.minutes == 0
+    ) {
+      res.status(400)
+      return res.json({ message: 'An error occured' })
+    }
     const params = {
       title: req.body.title,
       description: req.body.description,
