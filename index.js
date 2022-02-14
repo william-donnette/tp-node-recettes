@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const passport = require('passport');
-const jwtStrategy = require('passport-jwt').Strategy, extractJwt = require('passport-jwt').ExtractJwt;
+const JwtStrategy = require('passport-jwt').Strategy, extractJwt = require('passport-jwt').ExtractJwt;
 const { response } = require('express');
 const { use } = require('passport');
 const userModule = require('./user');
@@ -20,7 +20,7 @@ let opts = {
     jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
     secretOrKey: variables.secretToken
 }
-passport.use(new jwtStrategy(opts, async function (jwtPayload, done) {
+passport.use(new JwtStrategy(opts, async function (jwtPayload, done) {
     try {
         const response = await axios.get(variables.dbUrl + 'users/' + jwtPayload.id, variables.options);
         const user = response.data;
