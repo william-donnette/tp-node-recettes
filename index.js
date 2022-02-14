@@ -1,36 +1,42 @@
-const express = require('express');
-const cors = require('cors');
-const app = express();
-const passport = require('passport');
-const JwtStrategy = require('passport-jwt').Strategy, extractJwt = require('passport-jwt').ExtractJwt;
-const { response } = require('express');
-const { use } = require('passport');
-const userModule = require('./user');
-const axios = require('axios');
-const recetteModule = require('./recette');
+const express = require('express')
+const cors = require('cors')
+const app = express()
+const passport = require('passport')
+const JwtStrategy = require('passport-jwt').Strategy,
+  extractJwt = require('passport-jwt').ExtractJwt
+const { response } = require('express')
+const { use } = require('passport')
+const userModule = require('./user')
+const axios = require('axios')
+const recetteModule = require('./recette')
 const PORT = process.env.PORT || 5000
-const variables = require('./variables');
+const variables = require('./variables')
 
 // MIDDLEWARES
-app.use(express.json());
-app.use(passport.initialize());
-app.use(cors());
+app.use(express.json())
+app.use(passport.initialize())
+app.use(cors())
 // Passport Auth
 let opts = {
-    jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
-    secretOrKey: variables.secretToken
+  jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: variables.secretToken,
 }
-passport.use(new JwtStrategy(opts, async function (jwtPayload, done) {
+passport.use(
+  new JwtStrategy(opts, async function (jwtPayload, done) {
     try {
-        const response = await axios.get(variables.dbUrl + 'users/' + jwtPayload.id, variables.options);
-        const user = response.data;
-        if (!user)
-            return done({ "message": "User not found !" }, false);
-        return done(null, user);
+      const response = await axios.get(
+        variables.dbUrl + 'users/' + jwtPayload.id,
+        variables.options,
+      )
+
+      const user = response.data
+      if (user.length === 0) return done('UserNotFound', null)
+      return done(null, user)
     } catch (e) {
-        return done(e.response, false);
+      return done(e.response, false)
     }
-}))
+  }),
+)
 
 /**
  * @api {get} /recettes Recipe List
@@ -90,9 +96,7 @@ passport.use(new JwtStrategy(opts, async function (jwtPayload, done) {
  *      
  *
  */
-app.get('/recettes',
-    recetteModule.getAll
-);
+app.get('/recettes', recetteModule.getAll)
 
 /**
  * @api {get} /recette/:id Recipe Details
@@ -142,9 +146,7 @@ app.get('/recettes',
         }     
  *
  */
-app.get('/recette/:id',
-    recetteModule.get
-);
+app.get('/recette/:id', recetteModule.get)
 
 /**
  * @api {post} /recette Create Recipe
@@ -219,10 +221,11 @@ app.get('/recette/:id',
         }
  *
  */
-app.post('/recette',
-    passport.authenticate('jwt', { session: false }),
-    recetteModule.create
-);
+app.post(
+  '/recette',
+  passport.authenticate('jwt', { session: false }),
+  recetteModule.create,
+)
 
 /**
  * @api {patch} /recette/:id Update Recipe
@@ -292,11 +295,12 @@ app.post('/recette',
         }
  *
  */
-app.patch('/recette/:id',
-    passport.authenticate('jwt', { session: false }),
-    recetteModule.verify,
-    recetteModule.patch
-);
+app.patch(
+  '/recette/:id',
+  passport.authenticate('jwt', { session: false }),
+  recetteModule.verify,
+  recetteModule.patch,
+)
 
 /**
  * @api {put} /recette/:id Update Entire Recipe
@@ -385,11 +389,12 @@ app.patch('/recette/:id',
         }
  *
  */
-app.put('/recette/:id',
-    passport.authenticate('jwt', { session: false }),
-    recetteModule.verify,
-    recetteModule.put
-);
+app.put(
+  '/recette/:id',
+  passport.authenticate('jwt', { session: false }),
+  recetteModule.verify,
+  recetteModule.put,
+)
 
 /**
  * @api {delete} /recette/:id Delete Recipe
@@ -432,11 +437,12 @@ app.put('/recette/:id',
         }
  *
  */
-app.delete('/recette/:id',
-    passport.authenticate('jwt', { session: false }),
-    recetteModule.verify,
-    recetteModule.remove
-);
+app.delete(
+  '/recette/:id',
+  passport.authenticate('jwt', { session: false }),
+  recetteModule.verify,
+  recetteModule.remove,
+)
 
 /**
  * @api {post} /login Connect User
@@ -470,9 +476,7 @@ app.delete('/recette/:id',
             "message": "User not found"
         }
  */
-app.post('/login',
-    userModule.login
-);
+app.post('/login', userModule.login)
 
 /**
  * @api {post} /register Create User
@@ -527,10 +531,8 @@ app.post('/login',
             "status": 400
         }
  */
-app.post('/register',
-    userModule.create
-);
+app.post('/register', userModule.create)
 
 app.listen(PORT, function () {
-    console.log("Server oppened on " + PORT);
+  console.log('Server oppened on ' + PORT)
 })
