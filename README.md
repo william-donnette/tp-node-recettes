@@ -8,7 +8,7 @@ Ce dépôt correspond à la partie API du projet codé en Node.js
 
 # Host
 
-Le Tp est hébergé sur *Heroku* disponible au sur le lien suivant : [Lien du TP (partie Node)](https://tp-node-recettes.herokuapp.com/)
+Le Tp est hébergé sur *Heroku* disponible sur le lien suivant : [Lien du TP (partie Node)](https://tp-node-recettes.herokuapp.com/)
 
 # Database
 
