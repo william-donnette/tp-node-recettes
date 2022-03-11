@@ -42,7 +42,7 @@ const verify = async function (req, res, next) {
       return res.json({ message: 'Recipe not found' })
     } 
     // La recette n'appartient pas à la personne connectée 
-    else if (recette.user[0]._id != user._id) {
+    else if (recette.user._id != user._id) {
       res.status(403)
       return res.json({ message: 'Unauthorized' })
     }
@@ -245,8 +245,10 @@ const put = async function (req, res) {
       params,
       env.database.options,
     )
-    const recette = fill(response.data)
 
+    console.log(response)
+    const recette = fill(response.data)
+    console.log(recette)
     // Aucune recette trouvée
     if (!recette) {
       res.status(400)
