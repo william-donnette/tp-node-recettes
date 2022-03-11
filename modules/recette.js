@@ -157,7 +157,7 @@ const create = async function (req, res) {
       return res.json({ message: 'An error occured' })
     }
 
-    return res.json(recette)
+    return res.json({message: "Recipes saved !", recette})
   } catch (error) {
     return response.sendError(res, error);
   }
@@ -200,7 +200,7 @@ const patch = async function (req, res) {
     )
 
     // Fillable recette
-    const recette = fill(response)
+    const recette = fill(response.data)
 
     // Aucune recette trouvée
     if (!recette) {
@@ -208,7 +208,7 @@ const patch = async function (req, res) {
       return res.json({ message: 'An error occured' })
     }
 
-    return res.json(recette)
+    return res.json({message: "Recipes updated !", recette})
   } catch (error) {
     return response.sendError(res, error);
   }
@@ -245,7 +245,7 @@ const put = async function (req, res) {
       params,
       env.database.options,
     )
-    const recette = fill(response)
+    const recette = fill(response.data)
 
     // Aucune recette trouvée
     if (!recette) {
@@ -253,7 +253,7 @@ const put = async function (req, res) {
       return res.json({ message: 'An error occured' })
     }
 
-    return res.json(recette)
+    return res.json({ message: "Recipes updated !", recette})
   } catch (error) {
     return response.sendError(res, error);
   }
