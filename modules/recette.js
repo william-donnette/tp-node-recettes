@@ -149,10 +149,8 @@ const create = async function (req, res) {
       params,
       env.database.options,
     )
-
     // Fillable recette
-    const recette = fill(response)
-
+    const recette = fill(response.data)
     // Aucune recette trouvée
     if (!recette) {
       res.status(400)
