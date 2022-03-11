@@ -37,7 +37,7 @@ const verify = async function (req, res, next) {
     const recette = fill(response.data)
 
     // Aucune recette trouvée
-    if (recette.length == 0) {
+    if (!recette) {
       res.status(400)
       return res.json({ message: 'Recipe not found' })
     } 
@@ -180,10 +180,10 @@ const patch = async function (req, res) {
         )
       ){
         // Vérification des paramètres
-        if ((key == "title" || key == "description") && value != ""){
+        if ((key == "title" || key == "description") && val != ""){
           params[key] = val
         }
-        else if ((key == "ingredients" || key == "minutes") && value > 0){
+        else if ((key == "ingredients" || key == "minutes") && val > 0){
           params[key] = val
         }
       }
