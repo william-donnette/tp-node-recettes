@@ -1,15 +1,15 @@
 const axios = require('axios')
-const { json } = require('express/lib/response')
-const variables = require('./variables')
+const env = require('../config/env')
+const userModule = require('./user')
+const response = require('./response');
 
 /**
  * Fonction qui retourne une recette fillable
  * C'est à dire une recette sans paramètres inapropriés qui ne doivent pas être visibles par l'utilisateur
  */
-const fill = function (resp) {
+const fill = function (recette) {
   try {
-    const recette = resp.data
-    delete recette.user[0].password
+    recette.user = userModule.fill(recette.user[0])
     delete recette._createdby
     delete recette._changedby
     delete recette._created
@@ -29,25 +29,30 @@ const fill = function (resp) {
 const verify = async function (req, res, next) {
   const user = req.user
   try {
+    // Connexion à la BD
     const response = await axios.get(
-      variables.dbUrl + 'recettes/' + req.params.id,
-      variables.options,
+      env.database.url + 'recettes/' + req.params.id,
+      env.database.options,
     )
-    const recette = response.data
+    const recette = fill(response.data)
+
+    // Aucune recette trouvée
     if (recette.length == 0) {
       res.status(400)
       return res.json({ message: 'Recipe not found' })
-    } else {
-      if (recette.user[0]._id == user._id) next()
-      else {
-        res.status(403)
-        return res.json({ message: 'Unauthorized' })
-      }
+    } 
+    // La recette n'appartient pas à la personne connectée 
+    else if (recette.user[0]._id != user._id) {
+      res.status(403)
+      return res.json({ message: 'Unauthorized' })
     }
+
+    else {
+      next()
+    }
+
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
@@ -57,19 +62,20 @@ const verify = async function (req, res, next) {
  */
 const getAll = async function (req, res) {
   try {
+    // Connexion à la BD
     const response = await axios.get(
-      variables.dbUrl + 'recettes',
-      variables.options,
+      env.database.url + 'recettes',
+      env.database.options,
     )
     const recettes = response.data
+
+    // Fillable recettes
     recettes.forEach((recette) => {
-      delete recette.user[0].password
+      recette = fill(recette);
     })
     return res.json({ total: recettes.length, recipes: recettes })
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
@@ -80,22 +86,24 @@ const getAll = async function (req, res) {
  */
 const get = async function (req, res) {
   try {
+    // Connexion à la BD
     const response = await axios.get(
-      variables.dbUrl + 'recettes/' + req.params.id,
-      variables.options,
+      env.database.url + 'recettes/' + req.params.id,
+      env.database.options,
     )
+
+    // Fillable recette
     const recette = fill(response)
 
+    // Aucune recette trouvée
     if (!recette) {
       res.status(400)
       return res.json({ message: 'Recipe not found' })
     }
+
     return res.json(recette)
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
@@ -110,17 +118,20 @@ const get = async function (req, res) {
  */
 const create = async function (req, res) {
   try {
-    const date = new Date()
+    // Vérification des paramètres
     if (
       req.body.title === '' ||
       req.body.description === '' ||
-      req.body.ingredients.length === 0 ||
-      req.body.personnes == 0 ||
-      req.body.minutes == 0
+      req.body.ingredients.length <= 0 ||
+      req.body.personnes <= 0 ||
+      req.body.minutes <= 0
     ) {
       res.status(400)
       return res.json({ message: 'An error occured' })
     }
+
+    // Récupération des paramètres
+    const date = new Date()
     const params = {
       title: req.body.title,
       description: req.body.description,
@@ -131,20 +142,26 @@ const create = async function (req, res) {
       created_at: date,
       updated_at: date,
     }
+
+    // Connexion à la BD
     const response = await axios.post(
-      variables.dbUrl + 'recettes',
+      env.database.url + 'recettes',
       params,
-      variables.options,
+      env.database.options,
     )
+
+    // Fillable recette
     const recette = fill(response)
-    if (recette)
-      return res.json({ message: 'Recipes saved !', recette: recette })
-    res.status(400)
-    return res.json({ message: 'An error occured' })
+
+    // Aucune recette trouvée
+    if (!recette) {
+      res.status(400)
+      return res.json({ message: 'An error occured' })
+    }
+
+    return res.json(recette)
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
@@ -156,37 +173,52 @@ const create = async function (req, res) {
  */
 const patch = async function (req, res) {
   try {
+    // Récupération des paramètres
     let params = {}
     for (const [key, val] of Object.entries(req.body)) {
       if (
         ['title', 'description', 'ingredients', 'minutes'].find(
           (value) => key == value,
         )
-      )
-        params[key] = val
+      ){
+        // Vérification des paramètres
+        if ((key == "title" || key == "description") && value != ""){
+          params[key] = val
+        }
+        else if ((key == "ingredients" || key == "minutes") && value > 0){
+          params[key] = val
+        }
+      }
     }
+
+    // Modification de la date de changement
     params.updated_at = new Date()
+
+    // Connexion à la BD
     const response = await axios.patch(
-      variables.dbUrl + 'recettes/' + req.params.id,
+      env.database.url + 'recettes/' + req.params.id,
       params,
-      variables.options,
+      env.database.options,
     )
+
+    // Fillable recette
     const recette = fill(response)
 
-    if (recette)
-      return res.json({ message: 'Recipes updated !', recette: recette })
-    res.status(400)
-    return res.json({ message: 'An error occured' })
+    // Aucune recette trouvée
+    if (!recette) {
+      res.status(400)
+      return res.json({ message: 'An error occured' })
+    }
+
+    return res.json(recette)
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
 const put = async function (req, res) {
   try {
-    const date = new Date()
+    // Vérification des paramètres
     if (
       req.body.title === '' ||
       req.body.description === '' ||
@@ -197,6 +229,9 @@ const put = async function (req, res) {
       res.status(400)
       return res.json({ message: 'An error occured' })
     }
+
+    // Récupération des paramètres
+    const date = new Date()
     const params = {
       title: req.body.title,
       description: req.body.description,
@@ -205,35 +240,37 @@ const put = async function (req, res) {
       minutes: req.body.minutes,
       updated_at: date,
     }
+
+    // Connexion à la BD
     const response = await axios.put(
-      variables.dbUrl + 'recettes/' + req.params.id,
+      env.database.url + 'recettes/' + req.params.id,
       params,
-      variables.options,
+      env.database.options,
     )
     const recette = fill(response)
 
-    if (recette)
-      return res.json({ message: 'Recipes updated !', recette: recette })
-    res.status(400)
-    return res.json({ message: 'An error occured' })
+    // Aucune recette trouvée
+    if (!recette) {
+      res.status(400)
+      return res.json({ message: 'An error occured' })
+    }
+
+    return res.json(recette)
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
 const remove = async function (req, res) {
   try {
+    // Connexion à la BD
     await axios.delete(
-      variables.dbUrl + 'recettes/' + req.params.id,
-      variables.options,
+      env.database.url + 'recettes/' + req.params.id,
+      env.database.options,
     )
     return res.json({ message: 'Recipe deleted' })
   } catch (error) {
-    res.status(400)
-    if (error.response) return res.json(error.response.data)
-    return res.json({ message: 'Une erreur est survenue' })
+    return response.sendError(res, error);
   }
 }
 
@@ -241,11 +278,11 @@ const remove = async function (req, res) {
  * Module Export
  */
 module.exports = {
-  verify: verify,
-  getAll: getAll,
-  get: get,
-  create: create,
-  patch: patch,
-  put: put,
-  remove: remove,
+  verify,
+  getAll,
+  get,
+  create,
+  patch,
+  put,
+  remove,
 }

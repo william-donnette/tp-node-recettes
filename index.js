@@ -6,11 +6,11 @@ const JwtStrategy = require('passport-jwt').Strategy,
   extractJwt = require('passport-jwt').ExtractJwt
 const { response } = require('express')
 const { use } = require('passport')
-const userModule = require('./user')
+const userModule = require('./modules/user')
 const axios = require('axios')
-const recetteModule = require('./recette')
+const recetteModule = require('./modules/recette')
 const PORT = process.env.PORT || 5000
-const variables = require('./variables')
+const env = require('./config/env')
 
 // MIDDLEWARES
 app.use(express.json())
@@ -19,14 +19,14 @@ app.use(cors())
 // Passport Auth
 let opts = {
   jwtFromRequest: extractJwt.fromAuthHeaderAsBearerToken(),
-  secretOrKey: variables.secretToken,
+  secretOrKey: env.jwt.token,
 }
 passport.use(
   new JwtStrategy(opts, async function (jwtPayload, done) {
     try {
       const response = await axios.get(
-        variables.dbUrl + 'users/' + jwtPayload.id,
-        variables.options,
+        env.database.url + 'users/' + jwtPayload.id,
+        env.database.options,
       )
 
       const user = response.data
@@ -532,6 +532,16 @@ app.post('/login', userModule.login)
         }
  */
 app.post('/register', userModule.create)
+
+
+app.get('/apidoc', function(req, res){
+    res.sendFile(__dirname+'/apidoc/');
+});
+
+app.get('/assets/:file', function(req, res){
+    res.sendFile(__dirname+'/apidoc/assets/' + req.params.file);
+});
+
 
 app.listen(PORT, function () {
   console.log('Server oppened on ' + PORT)
