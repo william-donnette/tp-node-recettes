@@ -93,7 +93,7 @@ const get = async function (req, res) {
     )
 
     // Fillable recette
-    const recette = fill(response)
+    const recette = fill(response.data)
 
     // Aucune recette trouvée
     if (!recette) {
